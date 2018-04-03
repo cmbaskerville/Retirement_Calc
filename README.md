@@ -28,7 +28,7 @@ reps = 100
 ```
 Read In Historical Data
 ```{r}
-hist_returns <- read.csv("C:/Users/Chris Baskerville/Documents/R_sessions and files/R_Projects/Index_Returns_Shiny/Index_returns.csv")
+hist_returns <- read.csv(".../Index_returns.csv")
 ```
 Bootstrap Sampling
 ```{r}
