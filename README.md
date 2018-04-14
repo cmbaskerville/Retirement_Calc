@@ -1,4 +1,6 @@
-This R script has been created to simulate the possible outcomes of baskets of index mutual funds based on asset allocations. The asset classes are:
+This R script (bootstrap_calc_v2.Rmd) has been created to simulate the possible outcomes of baskets of index mutual funds based on asset allocations. You'll need the data table containing the market data. The disk location for the market data should be entered on line 37.
+
+The asset classes are:
   Large Caps: S&P500 (large_cap_weight). - A number between 0 and 1. ex: input 0.5 for 50% 
   Small Caps: Russell 600(small_cap_weight). - A number between 0 and 1.
   International Large Caps:  MSCI EAFE (international_weight). - A number between 0 and 1.
