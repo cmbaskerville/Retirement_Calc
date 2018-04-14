@@ -1,117 +1,29 @@
-# Retirement_Calc Simulator in R
----
-title: "R Notebook"
-output: html_notebook
----
-```{r}
-library(dplyr)
-library(infer)
-library(purrr)
-```
+This R script has been created to simulate the possible outcomes of baskets of index mutual funds based on asset allocations. The asset classes are:
+  Large Caps: S&P500 (large_cap_weight). - A number between 0 and 1. ex: input 0.5 for 50% 
+  Small Caps: Russell 600(small_cap_weight). - A number between 0 and 1.
+  International Large Caps:  MSCI EAFE (international_weight). - A number between 0 and 1.
+  US Government Bonds: (bond_weight). - A number between 0 and 1.
+  Bank Accounts: (CD_weight). - A number between 0 and 1.
 
-```{r}
-time <- 10
+The sum of all asset weights should be one (1).
 
-initial_capital <- 1
+The model allows for the saver to input
+  The number of years they have for retirement (save_time) - An integer in years.
+  The yearly contributions to their retirement fund (save_add) - An integer in years.
+  The fractional yearly increase in retirement savings (save_add_increase_percent) - A number between 0 and 1. Ex: 0.03 is 3%.
+  The amount of time you expect to live in retirement (retire_time) - in years.
+  The amount of money you will need in retirement to cover your living expenses (cost_of_living) - in today's dollars.
+  The amount of money you have already saved in your retirement account (initial_capital) - in dollars.
 
-large_cap_weight <- 0.4
-small_cap_weight <- 0.25
-international_weight <- 0.2
-bond_weight <- 0.10
-CD_weight <- 0.05
-
-account_for_inflation = T
-
-reps = 100
+Two parameters that the user needs to set:
+  The inflation adjustment (account_for_inflation) - TRUE or FALSE (all caps)
+  The number of simulations. I suggest 1000 for statistical relevance, however more simulations require more time to complete the script. - A positive integer
 
 
-```
-Read In Historical Data
-```{r}
-hist_returns <- read.csv(".../Index_returns.csv")
-```
-Bootstrap Sampling
-```{r}
-yearPickBoot <- hist_returns %>%
-  select(Year) %>% 
-  rep_sample_n(size = time, replace = TRUE, reps = reps)
-```
-Create simulation returns data
-```{r}
-sim_list <- list()
-for (repl in 1:reps) {
-  capital <- initial_capital
-  repSet <- yearPickBoot[which(yearPickBoot$replicate == repl),]
-  sim_vect <- numeric(time)
-  for (obs in 1:time) {
-    year <- as.numeric(repSet[obs,"Year"])
-    year_return <- filter(hist_returns, Year == year)
-    year_gain <-  year_return$Large_Cap*large_cap_weight*capital + year_return$Small_Cap*small_cap_weight*capital + year_return$International*international_weight*capital + year_return$Bond*bond_weight*capital + year_return$CD_Rate*CD_weight*capital
-    
-    if (account_for_inflation) {
-      year_gain <- year_gain - year_return$Inflation * capital
-    }
-      
-    sim_vect[obs] <- capital + year_gain
-    capital <- capital + year_gain
-  }
-  sim_list[[repl]] <- sim_vect
-}
-sim_df <- do.call("cbind", sim_list)
-colnames(sim_df) <- paste('sim', 1:reps, sep = "_")
-#labels <- paste0("year", 1:time)
-labels <- (1:time)
-sim_df <- data.frame(cbind(sim_df, Year = labels))
-```
-Plots
-```{r}
-library(reshape2)
-library(ggplot2)
-library(ggthemes)
-lot_data <- sim_df %>% 
-  melt(id.vars = 'Year', variable.name = 'simulation') %>% 
-  group_by(simulation)
-```
+The outcomes of the simulations are based on annual market data for the years since 1980. Simulations are constructed based on a bootstrap (selection with replacement) method.
 
-```{r}
-ggplot(lot_data, aes(x = Year, y = value)) + geom_line(aes(color = simulation)) +  scale_x_continuous(limits = c(0,time), expand = c(0, 0)) +
-  scale_y_continuous(limits = c(0, max(lot_data$value)), expand = c(0, 0)) + theme_economist() + theme(legend.position = "none")
-```
-Histogram
-```{r}
-library(stats)
-final_year <- sim_df %>% 
-  filter(Year == time) %>% 
-  #select(-Year) %>% 
-  melt(id.vars = 'Year', variable.name = 'simulation')
+Outcomes are charted on the following criteria:
+  Median performance of a retirement fund.
+  Chance of completing retirement with a non-zero balance.
+  Value of portfolio based on market Performance. Perfomance criteria (Good-75th Percentile; Fair-50th Percentile; Poor - 25th Percentile)
   
-ggplot(final_year, aes(x = value)) + geom_histogram(aes(y = ..density..), bins = 100, col = 'black')  + theme_economist() + stat_function(fun = dnorm, color = 'red', args = list(mean = median(final_year$value), sd = sd(final_year$value)))  + scale_x_continuous(name = "Value of Investment",limits = c(min(final_year$value), (mean(final_year$value) + 3*sd(final_year$value))), expand = c(0, 0)) + scale_y_continuous(name = "Fequency of Return") + geom_vline(xintercept = median(final_year$value), size = 1, colour = "#FF3721", linetype = "dashed") + ggtitle("Simultated Likelihood of Investment Outcomes")
-
-```
-```{r}
-quantile(final_year$value)
-```
-
-```{r}
-library(extrafont)
-fill <- "#4271AE"
-line <- "#1F3552"
-
-ggplot(final_year, aes(x = value)) +
-        geom_density(fill = fill, colour = line) +
-        scale_x_continuous(name = "Value of Investment",
-                           breaks = seq(0, 10, 1),
-                           limits=c(min(final_year$value), (mean(final_year$value) + 3*sd(final_year$value)))) +
-        scale_y_continuous(name = "Density of Return Likelihood") +
-        ggtitle("Simultated Likelihood of Investment Outcomes") +
-        theme_economist() +
-        theme(legend.position = "bottom", legend.direction = "horizontal",
-              legend.box = "horizontal",
-              legend.key.size = unit(1, "cm"),
-              plot.title = element_text(family="Tahoma"),
-              text = element_text(family = "Tahoma"),
-              axis.title = element_text(size = 12),
-              legend.text = element_text(size = 9),
-              legend.title=element_text(face = "bold", size = 9))
-```
-
